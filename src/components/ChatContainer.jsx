@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-const ChatContainer = ({ messages, onSendMessage, selectedUser, currentUser }) => {
+const ChatContainer = ({ messages, onSendMessage, selectedUser, currentUser, activeUsers }) => {
   const [message, setMessage] = useState('');
   const messagesEndRef = useRef(null);
 
@@ -20,7 +20,7 @@ const ChatContainer = ({ messages, onSendMessage, selectedUser, currentUser }) =
     }
   };
 
-  if (!selectedUser) {
+  if (!selectedUser || !activeUsers.includes(selectedUser) ) {
     return (
       <div className="flex-1 flex items-center justify-center bg-gray-800">
         <div className="text-center p-6 rounded-lg bg-gray-700">
