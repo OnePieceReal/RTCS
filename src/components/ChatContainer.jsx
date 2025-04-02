@@ -12,10 +12,41 @@ const ChatContainer = ({ messages, onSendMessage, selectedUser, currentUser, act
     scrollToBottom();
   }, [messages]);
 
+  //function will add an escape sequence each time the word exceeds the specified limit 
+  const formatMessage = (message, limit = 30) => {
+    let prevWordLength = 0;
+    
+    return message
+      .split(" ")
+      .map(word => {
+        let availableSpace = limit - prevWordLength;
+  
+        if (word.length > availableSpace) {
+     
+          let chunkSize = Math.max(1, availableSpace);
+          let chunks = word.match(new RegExp(`.{1,${chunkSize}}`, "g")) || [word];
+  
+          prevWordLength = chunks[chunks.length - 1].length; 
+          
+          return chunks.join("\n");
+        } else {
+          let formattedWord = word;
+          prevWordLength += word.length + 1;
+  
+          if (prevWordLength > limit) {
+            prevWordLength = word.length + 1; 
+            return "\n" + formattedWord;
+          }
+  
+          return formattedWord;
+        }
+      })
+      .join(" ");
+  };
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (message.trim() && selectedUser) {
-      onSendMessage(message);
+    if (message.trim() && selectedUser && message.length <2000) {
+      onSendMessage(formatMessage(message));
       setMessage('');
     }
   };
@@ -25,7 +56,7 @@ const ChatContainer = ({ messages, onSendMessage, selectedUser, currentUser, act
       <div className="flex-1 flex items-center justify-center bg-gray-800">
         <div className="text-center p-6 rounded-lg bg-gray-700">
           <h3 className="text-xl font-semibold text-gray-200">No user selected</h3>
-          <p className="text-gray-400 mt-2">Please select a user from the sidebar to start chatting</p>
+          <p className="text-gray-400 mt-2">Please friend or select a user from the sidebar to start chatting</p>
         </div>
       </div>
     );

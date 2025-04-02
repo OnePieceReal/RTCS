@@ -5,7 +5,7 @@ import UserList from './components/UserList';
 import LoginModal from './components/LoginModal';
 import FriendsList from './components/FriendsList';
 
-const socket = io('http://localhost:5000');
+const socket = io('http://localhost');
 
 function App() {
   const [username, setUsername] = useState('');
@@ -15,7 +15,11 @@ function App() {
   const [messages, setMessages] = useState({});
   const [friendRequests, setFriendRequests] = useState([]);
   const [friends,setFriends] = useState([]);
-
+  const [loginError, setLoginError] = useState('');
+  const [displayErrorFlag, setErrorFlag] = useState(false)
+  const handleError = () =>{
+    setErrorFlag((displayErrorFlag)=>!displayErrorFlag)
+  }
   //for list of active users +  messages between the users
   useEffect(() => {
     const handlePrivateMessage = ({ sender, message }) => {
@@ -34,15 +38,16 @@ function App() {
       setActiveUsers(currentActiveUsers);
       // Filter other state using the fresh users list
       setFriendRequests(prev => 
-        prev.filter(request => users.includes(request.sender))
+        prev.filter(request => currentActiveUsers.includes(request.sender))
       );
       setFriends(prev => 
-        prev.filter(friend => users.includes(friend))
+        prev.filter(friend => currentActiveUsers.includes(friend))
       );
       setMessages(prevMessages => {
         return Object.fromEntries(
-          Object.entries(prevMessages).filter((msg) => activeUsers.includes(msg.sender))
-        )});
+          Object.entries(prevMessages).filter(([sender]) => currentActiveUsers.includes(sender))
+        );
+      });
     };
     
     // socket.on('activeUsers', (users) => {
@@ -61,15 +66,16 @@ function App() {
 
   //listen for friend requests 
   useEffect(() => {
-    socket.on('friendRequest', ({ sender }) => { 
+    const handleFriendRequest=({ sender}) => { 
       if(friendRequests.find((request)=>request.sender === sender ) || friends.includes(sender)) return;
       console.log(`[Friend request recieved From: ${sender} at ${new Date().toLocaleTimeString()}`);
       setFriendRequests(prev => [...prev, { sender, status: 'pending' }]);
-    });
+    };
+    socket.on('friendRequest', handleFriendRequest);
     return () => {
       socket.off('friendRequest');
     };
-  });
+  }, [friendRequests, friends]);
 
   //users listens to see if the friend request have been accepted or rejected 
   useEffect(() => {
@@ -108,13 +114,25 @@ function App() {
 
 
 
-  //handle login
   const handleLogin = (name) => {
-    setUsername(name);
-    socket.emit('join', name);
-    setShowLogin(false);
+    if (!name || name.length > 10 || name.includes(" ")) {
+      setLoginError('Username must be 1-10 characters + no spaces');
+      if(!displayErrorFlag)handleError();
+      return;
+    }
+    socket.emit('checkUser', name, (response) => {
+      if (response.valid) {
+        setUsername(name);
+        socket.emit('join', name);
+        setShowLogin(false);
+        setLoginError('');
+        socket.off('checkUserStatus');
+      } else {
+        setLoginError(response.error || 'Username is taken');
+        if(!displayErrorFlag)handleError();
+      }
+    });
   };
-
 
   //sending messages to other users
   const handleSendMessage = (message) => {
@@ -142,7 +160,7 @@ function App() {
   return (
     <div className="flex h-screen bg-gray-900">
       {showLogin ? (
-        <LoginModal onLogin={handleLogin} />
+        <LoginModal onLogin={handleLogin} message={loginError} displayErrorFlag={displayErrorFlag} handleError={handleError} />
       ) : (
         <>
           <FriendsList
@@ -151,6 +169,7 @@ function App() {
             onRespondToRequest={respondToFriendRequest}
             onSelectUser={setSelectedUser}
             currentUser={username}
+            selectedUser={selectedUser}
           />
           <ChatContainer 
             messages={selectedUser ? messages[selectedUser] || [] : []}
@@ -161,11 +180,11 @@ function App() {
           />
 
          <UserList
-  users={activeUsers || []} // Ensure this is always an array
+  users={activeUsers || []}
   currentUser={username}
-  onSelectUser={setSelectedUser}
   selectedUser={selectedUser}
   onSendFriendRequest={sendFriendRequest}
+  friends={friends}
 />
         
         </>

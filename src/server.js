@@ -7,61 +7,75 @@ const app = express();
 app.use(cors());
 
 const server = http.createServer(app);
-const io = socketIo(server, {
+// const io = socketIo(server, {
+//   cors: {
+//     origin: "http://localhost:3000",
+//     methods: ["GET", "POST"]
+//   }
+// });
+const io = require('socket.io')(server, {
   cors: {
-    origin: "http://localhost:3000", // Update this to match your frontend URL
-    methods: ["GET", "POST"]
+    origin: "*",  // Allows all origins
+    methods: ["GET", "POST"],
+    credentials: false  // Must be false when origin is "*"
   }
 });
-
-// Store active users
+//map of active users 
 const activeUsers = new Map();
-
 
 io.on('connection', (socket) => {
   console.log('New client connected:', socket.id);
 
-  // Handle user joining
+//checks if the username is valid
+socket.on('checkUser', (name, callback) => {
+  if (!name || name.length > 10 ||name.includes(" ")) {
+    return callback({
+      valid: false,
+      error: "Username invalid!"
+    });
+  }
+  if (Array.from(activeUsers.values()).includes(name)) {
+    return callback({
+      valid: false,
+      error: 'Username is already taken'
+    });
+  }
+  callback({
+    valid: true,
+    name
+  });
+});
+
+  // handle user joining
   socket.on('join', (username) => {
     activeUsers.set(socket.id, username);
     io.emit('activeUsers', Array.from(activeUsers.values()));
-    console.log(Array.from(activeUsers.values()));
+    // console.log(Array.from(activeUsers.values()));
     console.log(`${username} joined the chat`);
   });
 
-  // Handle private messages
+  
+  // handle private messages
   socket.on('privateMessage', ({ recipient, message, sender }) => {
     const recipientSocket = findSocketIdByUsername(recipient);
     if (recipientSocket) {
       io.to(recipientSocket).emit('privateMessage', { sender, message });
     }
   });
-
-  // Handle disconnection
-  socket.on('disconnect', () => {
-    const username = activeUsers.get(socket.id);
-
-    if (username) {
-      activeUsers.delete(socket.id);
-      io.emit('activeUsers', Array.from(activeUsers.values()));
-      console.log(Array.from(activeUsers.values()));
-      console.log(`${username} left the chat`);
-    }
-  });
+  const pendingFriendRequests = new Set();
 
 
-
-const pendingFriendRequests = new Set();
+//handle friend requests 
 socket.on('friendRequest', ({ recipient, sender }) => {
   if (!recipient || !sender) {
     console.error('Invalid friend request - missing recipient or sender');
     return;
   }
   const requestId = `${sender}-${recipient}`;
-  if (pendingFriendRequests.has(requestId)) {
-    console.log(`Duplicate friend request from ${sender} to ${recipient}`);
-    return;
-  }
+  // if (pendingFriendRequests.has(requestId)) {
+  //   console.log(`Duplicate friend request from ${sender} to ${recipient}`);
+  //   return;
+  // }
   pendingFriendRequests.add(requestId);
   const recipientSocket = findSocketIdByUsername(recipient);
   if (recipientSocket) {
@@ -73,7 +87,7 @@ socket.on('friendRequest', ({ recipient, sender }) => {
   }
 });
 
-
+//handle reponse to friend requests 
 socket.on('friendRequestResponse', ({ sender, recipient, response }) => {
   const requestId = `${sender}-${recipient}`;
   pendingFriendRequests.delete(requestId);
@@ -88,8 +102,22 @@ socket.on('friendRequestResponse', ({ sender, recipient, response }) => {
   }
 });
 
+ // handle disconnection
+ socket.on('disconnect', () => {
+  const username = activeUsers.get(socket.id);
+  if (username) {
+    activeUsers.delete(socket.id);
+    io.emit('activeUsers', Array.from(activeUsers.values()));
+    for (const [requestId, request] of pendingFriendRequests.entries()) {
+      if (request.sender === username || request.recipient === username) {
+        pendingFriendRequests.delete(requestId);}}
+    // console.log(Array.from(activeUsers.values()));
+    // console.log(`${username} left the chat`);
+  }
+});
 
-  // Helper function to find socket ID by username
+
+  //function to find socket ID by username
   function findSocketIdByUsername(username) {
     for (const [socketId, user] of activeUsers.entries()) {
       if (user === username) return socketId;
@@ -98,5 +126,5 @@ socket.on('friendRequestResponse', ({ sender, recipient, response }) => {
   }
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = 80;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));

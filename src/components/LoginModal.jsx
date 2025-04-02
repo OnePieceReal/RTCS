@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-
-const LoginModal = ({ onLogin }) => {
+import ErrorCard from './ErrorCard';
+const LoginModal = ({ onLogin, message, displayErrorFlag,handleError,}) => {
   const [name, setName] = useState('');
+
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -30,6 +31,10 @@ const LoginModal = ({ onLogin }) => {
             Join Chat
           </button>
         </form>
+        <div className='p-5'>
+        <ErrorCard message={message} displayErrorFlag={displayErrorFlag} handleError={handleError} className="mb-4"/>
+        </div>
+        
       </div>
     </div>
   );

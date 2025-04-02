@@ -5,23 +5,26 @@ const FriendsList = ({
   friendRequests, 
   onRespondToRequest,
   onSelectUser,
-  currentUser
+  currentUser,
+  selectedUser
 }) => {
   return (
     <div className="w-1/5 border-r border-gray-700 flex flex-col">
-      {/* Friends Section */}
+      {/* friend sec */}
       <div className="p-4 border-b border-gray-700">
         <h2 className="text-xl font-semibold">Friends</h2>
       </div>
       <div className="overflow-y-auto flex-1">
         {friends.length === 0 ? (
-          <p className="p-4 text-gray-400">No friends yet</p>
+          <p className="p-4 text-gray-400">No friends yet :/</p>
         ) : (
           <ul>
             {friends.map((friend) => (
               <li
                 key={friend}
-                className="p-4 cursor-pointer hover:bg-gray-800"
+                className={`p-4 cursor-pointer hover:bg-gray-800 ${
+                  selectedUser === friend ? 'bg-gray-800 border-r-4 border-purple-500' : ''
+                }`}
                 onClick={() => onSelectUser(friend)}
               >
                 <div className="flex items-center">
@@ -34,13 +37,13 @@ const FriendsList = ({
         )}
       </div>
 
-      {/* Friend Requests Section */}
+      {/* Friend req sec */}
       <div className="p-4 border-t border-b border-gray-700">
         <h2 className="text-xl font-semibold">Friend Requests</h2>
       </div>
       <div className="overflow-y-auto flex-1">
         {friendRequests.length === 0 ? (
-          <p className="p-4 text-gray-400">No pending requests</p>
+          <p className="p-4 text-gray-400">No pending requests ;/</p>
         ) : (
           <ul>
             {friendRequests.map((request, index) => (
