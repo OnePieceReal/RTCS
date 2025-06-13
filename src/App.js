@@ -5,7 +5,9 @@ import UserList from './components/UserList';
 import LoginModal from './components/LoginModal';
 import FriendsList from './components/FriendsList';
 
-const socket = io('http://localhost');
+const socket = io("http://localhost:80", {
+  transports: ["websocket", "polling"],
+});
 
 function App() {
   const [username, setUsername] = useState('');
